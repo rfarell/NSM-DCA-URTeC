@@ -1,0 +1,58 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Data
+data/bakken.csv
+experiments/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+!data/bakken.csv
+models/*.pth
+models/*.pkl
+plots/
+tmp/
+batch_size_benchmark/
+Robust_Stochastic_Production_Forecasting_with_Kernelized_Gaussian_Processes.pdf
+experiments_architecture/
+experiments_data_size/
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+.coverage
+htmlcov/
+.pytest_cache/
+.coverage.*
+.tox/
+.nox/
+*.bak
+
+# Operating system files
+.DS_Store
+Thumbs.db
