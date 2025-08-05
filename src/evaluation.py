@@ -118,6 +118,13 @@ def load_experiment(experiment_name, device=None, config_loader=None, model_buil
     
     model.eval()
     
+    # Move data tensors to device
+    x_train = x_train.to(device)
+    z_train = z_train.to(device)
+    x_test = x_test.to(device)
+    z_test = z_test.to(device)
+    t_vals = t_vals.to(device)
+    
     return {
         'model': model,
         'config': config,

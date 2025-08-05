@@ -47,11 +47,21 @@ def main():
 
     # De-normalise if scale provided
     if scale_test is not None:
-        st = scale_test.unsqueeze(1).cpu().numpy()  # [N,1,3]
-        preds0 = preds0 * st
-        x_test_denorm = x_test * scale_test.unsqueeze(1)
+        # scale_test might be a tensor, convert to numpy for preds0
+        if isinstance(scale_test, torch.Tensor):
+            st_numpy = scale_test.cpu().numpy()[:, np.newaxis, :]  # [N,1,3] for numpy
+            scale_test_device = scale_test.to(x_test.device)
+        else:
+            st_numpy = scale_test[:, np.newaxis, :]  # [N,1,3] for numpy
+            scale_test_device = torch.tensor(scale_test, device=x_test.device, dtype=x_test.dtype)
+        
+        # Apply scaling
+        preds0 = preds0 * st_numpy  # both are numpy arrays now
+        x_test_denorm = x_test * scale_test_device.unsqueeze(1)
+        # Move back to CPU for plotting
+        x_test_denorm = x_test_denorm.cpu()
     else:
-        x_test_denorm = x_test
+        x_test_denorm = x_test.cpu()
 
     # phase order: Oil (1), Gas (0), Water (2)
     phase_tuples = [(1, "Oil"), (0, "Gas"), (2, "Water")]

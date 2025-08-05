@@ -52,7 +52,7 @@ def main():
     
     if args.eval_type in ['scatter', 'all']:
         cmd = [
-            'python', 'scripts/eval_scatter_plots.py',
+            sys.executable, 'scripts/eval_scatter_plots.py',
             '--experiment', args.experiment,
             '--num-mc', str(args.num_mc),
             '--seed', str(args.seed)
@@ -63,7 +63,7 @@ def main():
     
     if args.eval_type in ['trajectories', 'all']:
         cmd = [
-            'python', 'scripts/eval_trajectories.py',
+            sys.executable, 'scripts/eval_trajectories.py',
             '--experiment', args.experiment,
             '--num-traj', str(args.num_traj),
             '--num-wells', str(args.num_wells),
@@ -77,7 +77,7 @@ def main():
     
     if args.eval_type in ['metrics', 'all']:
         cmd = [
-            'python', 'scripts/eval_metrics.py',
+            sys.executable, 'scripts/eval_metrics.py',
             '--experiment', args.experiment,
             '--num-mc', str(args.num_mc),
             '--seed', str(args.seed),
@@ -89,7 +89,7 @@ def main():
         
     if args.eval_type in ['gradients', 'all']:
         cmd = [
-            'python', 'scripts/eval_production_gradients.py',
+            sys.executable, 'scripts/eval_production_gradients.py',
             '--experiment', args.experiment,
             '--seed', str(args.seed),
             '--well-idx', '0',  # Use well #0 by default
@@ -101,7 +101,7 @@ def main():
         
     if args.eval_type in ['tables', 'all']:
         cmd = [
-            'python', 'scripts/eval_latex_tables.py',
+            sys.executable, 'scripts/eval_latex_tables.py',
             '--experiment', args.experiment,
             '--num-mc', str(args.num_mc),
             '--seed', str(args.seed)
