@@ -39,10 +39,16 @@ class Trainer:
         if compile_model and hasattr(torch, 'compile') and self.device.type == 'cuda':
             print("Attempting to compile the model with torch.compile...")
             try:
-                # Use 'default' mode for better compatibility across different hardware
-                # 'max-autotune' can cause issues on some systems
-                self.model = torch.compile(self.model, mode="default")
-                print("Model compiled successfully!")
+                # Check GPU memory to decide compilation mode
+                props = torch.cuda.get_device_properties(self.device)
+                if props.total_memory > 8 * 1024**3:  # More than 8GB
+                    # Use max-autotune for better performance on powerful GPUs
+                    self.model = torch.compile(self.model, mode="max-autotune")
+                    print("Model compiled with max-autotune mode!")
+                else:
+                    # Use default mode for GPUs with less memory
+                    self.model = torch.compile(self.model, mode="default")
+                    print("Model compiled with default mode!")
             except Exception as e:
                 print(f"Could not compile model: {e}. Running un-compiled.")
                 
@@ -111,10 +117,18 @@ class Trainer:
         if plots_dir:
             os.makedirs(plots_dir, exist_ok=True)
         
-        # Keep training data on CPU for DataLoader (pin_memory requires CPU tensors)
-        # We'll move batches to device inside the training loop
-        x_train_cpu = x_train.cpu() if x_train.is_cuda else x_train
-        z_train_cpu = z_train.cpu() if z_train.is_cuda else z_train
+        # For GPU training, we can keep data on GPU and use a custom collate function
+        # This avoids CPU-GPU transfers during training
+        if self.device.type == 'cuda':
+            # Keep data on GPU
+            x_train_gpu = x_train.to(self.device) if not x_train.is_cuda else x_train
+            z_train_gpu = z_train.to(self.device) if not z_train.is_cuda else z_train
+            # For DataLoader, we'll use indices instead of actual data
+            train_indices = torch.arange(len(x_train), device='cpu')
+        else:
+            # For CPU training, use original approach
+            x_train_cpu = x_train.cpu() if x_train.is_cuda else x_train
+            z_train_cpu = z_train.cpu() if z_train.is_cuda else z_train
         
         # Move non-batched data to device
         if t_vals is not None:
@@ -125,17 +139,43 @@ class Trainer:
             z_test = z_test.to(self.device)
             
         # Create data loader with optimizations
-        train_ds = TensorDataset(x_train_cpu, z_train_cpu)
-        # CUDA multiprocessing fix: Use 0 workers for CUDA to avoid initialization errors
-        # This is especially important on Windows/WSL where CUDA + multiprocessing can fail
-        num_workers = 0  # Always use 0 workers to avoid CUDA initialization errors
-        train_loader = DataLoader(
-            train_ds,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=num_workers,  # Use single process to avoid CUDA issues
-            pin_memory=(self.device.type == 'cuda')  # Speed up CPU-to-GPU transfer
-        )
+        if self.device.type == 'cuda':
+            # Custom dataset that returns indices for GPU data
+            class GPUIndexDataset(torch.utils.data.Dataset):
+                def __init__(self, length):
+                    self.length = length
+                
+                def __len__(self):
+                    return self.length
+                
+                def __getitem__(self, idx):
+                    return idx
+            
+            train_ds = GPUIndexDataset(len(x_train_gpu))
+            
+            # Custom collate function to fetch GPU data
+            def gpu_collate_fn(indices):
+                indices = torch.tensor(indices, device=self.device, dtype=torch.long)
+                return x_train_gpu[indices], z_train_gpu[indices]
+            
+            train_loader = DataLoader(
+                train_ds,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=0,
+                collate_fn=gpu_collate_fn,
+                persistent_workers=False
+            )
+        else:
+            # CPU training path
+            train_ds = TensorDataset(x_train_cpu, z_train_cpu)
+            train_loader = DataLoader(
+                train_ds,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=0,
+                pin_memory=False
+            )
         
         # Training statistics - initialize with previous stats if available
         if initial_stats:
@@ -170,9 +210,13 @@ class Trainer:
             prefix = "Final" if is_final else f"Step {step}"
             print(f"\n--- {prefix} Evaluation ---")
             
-            # Evaluate on training data (ensure it's on device)
-            x_train_device = x_train_cpu.to(self.device)
-            z_train_device = z_train_cpu.to(self.device)
+            # Evaluate on training data (use GPU data if available)
+            if self.device.type == 'cuda':
+                x_train_device = x_train_gpu
+                z_train_device = z_train_gpu
+            else:
+                x_train_device = x_train_cpu.to(self.device)
+                z_train_device = z_train_cpu.to(self.device)
             train_metrics, _ = evaluate_model(
                 self.model, x_train_device, z_train_device, t_vals,
                 scale_tensor=scale_train,
@@ -245,9 +289,10 @@ class Trainer:
             }
             
             for batch_x, batch_z in train_loader:
-                # Move batch to device
-                batch_x = batch_x.to(self.device)
-                batch_z = batch_z.to(self.device)
+                # Data is already on device if using GPU
+                if self.device.type != 'cuda':
+                    batch_x = batch_x.to(self.device)
+                    batch_z = batch_z.to(self.device)
                 
                 B, T, D = batch_x.shape
                 step_start = time.time()

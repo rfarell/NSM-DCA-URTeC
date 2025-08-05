@@ -260,9 +260,49 @@ def print_metrics(metrics, prefix=""):
 
 def get_device():
     """Get the best available device (CUDA or CPU, skip MPS)."""
+    import os
+    
+    # Check for environment variable to force specific GPU
+    cuda_device = os.environ.get('CUDA_VISIBLE_DEVICES', None)
+    
     if torch.cuda.is_available():
+        device_count = torch.cuda.device_count()
+        
+        # If CUDA_VISIBLE_DEVICES is set, use it
+        if cuda_device is not None and cuda_device.isdigit():
+            device_id = int(cuda_device)
+            if device_id < device_count:
+                props = torch.cuda.get_device_properties(device_id)
+                print(f"Using GPU {device_id} (from CUDA_VISIBLE_DEVICES): {props.name} with {props.total_memory / 1024**3:.1f}GB memory")
+                return torch.device(f"cuda:{device_id}")
+        
+        # On systems with multiple GPUs, prefer NVIDIA over Intel
+        if device_count > 1:
+            print(f"Found {device_count} CUDA devices:")
+            best_device = 0
+            best_memory = 0
+            
+            for i in range(device_count):
+                props = torch.cuda.get_device_properties(i)
+                memory_gb = props.total_memory / 1024**3
+                print(f"  GPU {i}: {props.name} with {memory_gb:.1f}GB memory")
+                
+                # Prefer devices with more memory (likely dedicated GPUs)
+                if props.total_memory > best_memory:
+                    best_memory = props.total_memory
+                    best_device = i
+            
+            # Use the GPU with most memory
+            props = torch.cuda.get_device_properties(best_device)
+            print(f"Selected GPU {best_device}: {props.name} with {props.total_memory / 1024**3:.1f}GB memory")
+            return torch.device(f"cuda:{best_device}")
+        
+        # Single GPU system
+        props = torch.cuda.get_device_properties(0)
+        print(f"Using GPU: {props.name} with {props.total_memory / 1024**3:.1f}GB memory")
         return torch.device("cuda")
     else:
+        print("No CUDA device available, using CPU")
         return torch.device("cpu")
 
 def build_model_from_config(config, device=None):
