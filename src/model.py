@@ -69,9 +69,9 @@ class ExpertGP(nn.Module):
         self.log_tc = nn.Parameter(torch.ones(self.state_dim) * 5.9)      # log days
         self.tilde_alpha = nn.Parameter(torch.zeros(self.state_dim)) # unconstrained
         
-        # Cache tril indices
-        self._tril_idx_n = torch.tril_indices(num_basis, num_basis)
-        self._tril_idx_3 = torch.tril_indices(3, 3)
+        # Cache tril indices - will be moved to correct device later
+        self.register_buffer('_tril_idx_n', torch.tril_indices(num_basis, num_basis))
+        self.register_buffer('_tril_idx_3', torch.tril_indices(3, 3))
 
     def compute_bL(self):
         """

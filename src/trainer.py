@@ -35,11 +35,13 @@ class Trainer:
         self.model = self.model.to(self.device)
     
         # Enable torch.compile for CUDA devices with safe fallback
-        if hasattr(torch, 'compile') and self.device.type == 'cuda':
+        compile_model = config.get("training", {}).get("compile_model", True)
+        if compile_model and hasattr(torch, 'compile') and self.device.type == 'cuda':
             print("Attempting to compile the model with torch.compile...")
             try:
-                # 'max-autotune' spends more time at the start to find the fastest kernels
-                self.model = torch.compile(self.model, mode="max-autotune")
+                # Use 'default' mode for better compatibility across different hardware
+                # 'max-autotune' can cause issues on some systems
+                self.model = torch.compile(self.model, mode="default")
                 print("Model compiled successfully!")
             except Exception as e:
                 print(f"Could not compile model: {e}. Running un-compiled.")

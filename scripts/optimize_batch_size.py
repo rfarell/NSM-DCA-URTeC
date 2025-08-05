@@ -15,6 +15,10 @@ import yaml
 import copy
 from datetime import datetime
 
+# Enable TensorFloat32 (TF32) for better performance on compatible GPUs
+if torch.cuda.is_available():
+    torch.set_float32_matmul_precision('high')
+
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
