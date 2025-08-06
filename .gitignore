@@ -28,15 +28,6 @@ ENV/
 *.swo
 .DS_Store
 
-# Project specific
-models/*.pth
-models/*.pkl
-plots/
-tmp/
-batch_size_benchmark/
-Robust_Stochastic_Production_Forecasting_with_Kernelized_Gaussian_Processes.pdf
-experiments_architecture/
-experiments_data_size/
 
 # Log files
 *.log
