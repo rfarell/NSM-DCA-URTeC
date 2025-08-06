@@ -55,4 +55,9 @@ htmlcov/
 
 # Operating system files
 .DS_Store
-Thumbs.dbdata/bakken.csv
+Thumbs.db
+
+# Aggregated files
+aggregate.txt
+aggregate_repo.txt
+llm/
