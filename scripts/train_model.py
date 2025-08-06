@@ -60,7 +60,6 @@ def main():
     
     # Handle --no-compile flag
     if args.no_compile:
-        import os
         os.environ['TORCH_COMPILE_DISABLE'] = '1'
         print("Torch compilation disabled via --no-compile flag")
     
