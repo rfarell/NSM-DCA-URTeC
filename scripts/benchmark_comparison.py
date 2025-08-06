@@ -13,6 +13,7 @@ import pandas as pd
 import torch
 import yaml
 import pickle
+import time
 from typing import Dict, Tuple
 import warnings
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 from src.data_processor import DataProcessor
-from src.utils import load_config, build_model_from_config
+from src.utils import load_config, build_model_from_config, load_model_checkpoint
 from src.dca_models import ArpsHyperbolic, DuongModel, bootstrap_dca_uncertainty
 from src.ml_benchmarks import LightGBMQuantile
 from src.probabilistic_metrics import (
@@ -381,6 +382,12 @@ def parse_args():
                       help='Number of parallel workers')
     parser.add_argument('--max-wells', type=int, default=None,
                       help='Maximum number of wells to process')
+    parser.add_argument('--force-dca', action='store_true',
+                      help='Force re-evaluation of DCA models even if cached results exist')
+    parser.add_argument('--skip-dca', action='store_true',
+                      help='Skip DCA evaluation entirely (use only if cached results exist)')
+    parser.add_argument('--skip-lightgbm', action='store_true',
+                      help='Skip LightGBM evaluation')
     return parser.parse_args()
 
 
@@ -439,7 +446,7 @@ def main():
     
     if os.path.exists(model_path):
         model = build_model_from_config(config, device)
-        model.load_state_dict(torch.load(model_path, map_location=device))
+        model = load_model_checkpoint(model, model_path, device)
         model.eval()
         
         nsm_results = evaluate_nsm_conditional(
@@ -450,24 +457,96 @@ def main():
         print(f"NSM model not found at {model_path}")
         nsm_results = None
     
-    # Evaluate DCA models
-    print(f"\nEvaluating DCA models (conditional on {args.n_history} points)...")
-    print(f"  Bootstrap samples: {args.n_bootstrap}")
+    # Handle DCA model evaluation with caching
+    dca_cache_file = os.path.join(args.output_dir, f'dca_cache_h{args.n_history}_b{args.n_bootstrap}_w{args.max_wells}.pkl')
+    dca_results = None
     
-    dca_results = evaluate_dca_conditional(
-        x_test_denorm, t_vals_days,
-        n_history=args.n_history,
-        n_bootstrap=args.n_bootstrap,
-        n_workers=args.n_workers,
-        max_wells=args.max_wells
-    )
+    # Check if we should use cached DCA results
+    if not args.skip_dca:
+        if os.path.exists(dca_cache_file) and not args.force_dca:
+            print(f"\n" + "="*60)
+            print("CACHED DCA RESULTS FOUND")
+            print("="*60)
+            print(f"Cache file: {dca_cache_file}")
+            print(f"Created: {time.ctime(os.path.getmtime(dca_cache_file))}")
+            
+            user_input = input("\nDo you want to use cached DCA results? This saves ~5-10 minutes. [Y/n]: ").strip().lower()
+            
+            if user_input != 'n':
+                print("Loading cached DCA results...")
+                with open(dca_cache_file, 'rb') as f:
+                    dca_results = pickle.load(f)
+                print("✓ Cached DCA results loaded successfully")
+            else:
+                print("Re-evaluating DCA models...")
+        
+        # Evaluate DCA models if not loaded from cache
+        if dca_results is None:
+            print(f"\nEvaluating DCA models (conditional on {args.n_history} points)...")
+            print(f"  Bootstrap samples: {args.n_bootstrap}")
+            
+            dca_results = evaluate_dca_conditional(
+                x_test_denorm, t_vals_days,
+                n_history=args.n_history,
+                n_bootstrap=args.n_bootstrap,
+                n_workers=args.n_workers,
+                max_wells=args.max_wells
+            )
+            
+            # Save DCA results to cache
+            print(f"Saving DCA results to cache: {dca_cache_file}")
+            with open(dca_cache_file, 'wb') as f:
+                pickle.dump(dca_results, f)
+            print("✓ DCA results cached for future use")
+    else:
+        # Try to load from cache when skipping
+        if os.path.exists(dca_cache_file):
+            print(f"\nLoading cached DCA results (--skip-dca flag)...")
+            with open(dca_cache_file, 'rb') as f:
+                dca_results = pickle.load(f)
+            print("✓ Cached DCA results loaded")
+        else:
+            print(f"\nWARNING: No cached DCA results found at {dca_cache_file}")
+            print("DCA models will be excluded from comparison")
     
-    # Evaluate LightGBM
-    print(f"\nEvaluating LightGBM (conditional on {args.n_history} points)...")
-    lgb_results = evaluate_lightgbm_conditional(
-        x_train_denorm, x_test_denorm, z_train, z_test_limited, t_vals_days,
-        n_history=args.n_history
-    )
+    # Handle LightGBM evaluation with caching
+    lgb_cache_file = os.path.join(args.output_dir, f'lgb_cache_h{args.n_history}_w{args.max_wells}.pkl')
+    lgb_results = None
+    
+    if not args.skip_lightgbm:
+        # Check for cached LightGBM results
+        if os.path.exists(lgb_cache_file) and not args.force_dca:
+            print(f"\n" + "="*60)
+            print("CACHED LIGHTGBM RESULTS FOUND")
+            print("="*60)
+            print(f"Cache file: {lgb_cache_file}")
+            print(f"Created: {time.ctime(os.path.getmtime(lgb_cache_file))}")
+            
+            user_input = input("\nDo you want to use cached LightGBM results? This saves ~1-2 minutes. [Y/n]: ").strip().lower()
+            
+            if user_input != 'n':
+                print("Loading cached LightGBM results...")
+                with open(lgb_cache_file, 'rb') as f:
+                    lgb_results = pickle.load(f)
+                print("✓ Cached LightGBM results loaded successfully")
+            else:
+                print("Re-evaluating LightGBM...")
+        
+        # Evaluate LightGBM if not loaded from cache
+        if lgb_results is None:
+            print(f"\nEvaluating LightGBM (conditional on {args.n_history} points)...")
+            lgb_results = evaluate_lightgbm_conditional(
+                x_train_denorm, x_test_denorm, z_train, z_test_limited, t_vals_days,
+                n_history=args.n_history
+            )
+            
+            # Save LightGBM results to cache
+            print(f"Saving LightGBM results to cache: {lgb_cache_file}")
+            with open(lgb_cache_file, 'wb') as f:
+                pickle.dump(lgb_results, f)
+            print("✓ LightGBM results cached for future use")
+    else:
+        print("\nSkipping LightGBM evaluation (--skip-lightgbm flag)")
     
     # Compare results on future predictions only
     print("\nComputing comparison metrics on future predictions...")
@@ -497,13 +576,13 @@ def main():
             }
         
         # DCA models
-        if phase_name in dca_results:
+        if dca_results and phase_name in dca_results:
             for dca_name in ['Arps', 'Duong']:
                 if dca_name in dca_results[phase_name]:
                     model_results[dca_name] = dca_results[phase_name][dca_name]
         
         # LightGBM
-        if phase_name in lgb_results:
+        if lgb_results and phase_name in lgb_results:
             model_results['LightGBM'] = lgb_results[phase_name]
         
         # Calculate metrics

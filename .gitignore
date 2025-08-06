@@ -5,7 +5,7 @@ __pycache__/
 *.so
 
 # Data
-data/bakken.csv
+/data/bakken.csv
 experiments/
 
 # Distribution / packaging
@@ -30,7 +30,6 @@ ENV/
 .DS_Store
 
 # Project specific
-!data/bakken.csv
 models/*.pth
 models/*.pkl
 plots/
@@ -61,3 +60,10 @@ Thumbs.db
 aggregate.txt
 aggregate_repo.txt
 llm/
+.claude/
+aggregate.py
+aggregate.txt
+
+# Benchmark cache files
+benchmarks*/
+*_cache_*.pkl

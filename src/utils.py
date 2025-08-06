@@ -367,3 +367,53 @@ def print_parameter_types(model):
     print(f"Weights: {weight_count:,}")
     print(f"Biases : {bias_count:,}")
     print(f"Others : {other_count:,}")
+
+
+def load_model_checkpoint(model, checkpoint_path, device, strict=True):
+    """
+    Load model checkpoint with cross-platform compatibility.
+    
+    Args:
+        model: The model to load weights into
+        checkpoint_path: Path to the checkpoint file
+        device: Device to load the model to
+        strict: Whether to strictly enforce that the keys match
+    
+    Returns:
+        The model with loaded weights
+    """
+    import torch
+    
+    # Load checkpoint with map_location for cross-platform compatibility
+    # Handle PyTorch 2.6+ weights_only parameter
+    try:
+        # Try with weights_only=False for compatibility with our checkpoint format
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    except TypeError:
+        # Older PyTorch versions don't have weights_only parameter
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+    
+    # Handle both old and new checkpoint formats
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        # New format with metadata
+        state_dict = checkpoint['model_state_dict']
+        if 'pytorch_version' in checkpoint:
+            print(f"  Model saved with PyTorch {checkpoint['pytorch_version']}")
+        if 'cuda_available' in checkpoint:
+            print(f"  Model saved on {'GPU' if checkpoint['cuda_available'] else 'CPU'}")
+    else:
+        # Old format - just the state dict
+        state_dict = checkpoint
+    
+    # Fix compiled model keys if necessary
+    if any(k.startswith('_orig_mod.') for k in state_dict.keys()):
+        # Remove the '_orig_mod.' prefix from keys
+        state_dict = {k.replace('_orig_mod.', ''): v for k, v in state_dict.items()}
+    
+    # Load the state dict
+    model.load_state_dict(state_dict, strict=strict)
+    
+    # Move model to the correct device
+    model = model.to(device)
+    
+    return model

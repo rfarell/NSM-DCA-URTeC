@@ -16,7 +16,7 @@ if torch.cuda.is_available():
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.utils import load_config, build_model_from_config
+from src.utils import load_config, build_model_from_config, load_model_checkpoint
 from src.data_processor import DataProcessor
 from src.trainer import Trainer
 
@@ -161,7 +161,7 @@ def main():
     if args.model_path and os.path.exists(args.model_path):
         print(f"Loading model from {args.model_path}...")
         model = build_model_from_config(config, device)
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        model = load_model_checkpoint(model, args.model_path, device)
         print("Model loaded successfully.")
     else:
         print("Building new model...")

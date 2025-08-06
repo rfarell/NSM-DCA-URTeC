@@ -567,18 +567,38 @@ class Trainer:
         return stats
     
     def save_model(self, path):
-        """Save model state dict to file."""
+        """Save model state dict to file (CPU-compatible for cross-platform use)."""
         # Get the original model if it's compiled
         if hasattr(self.model, '_orig_mod'):
             # This is a compiled model, save the original module
-            torch.save(self.model._orig_mod.state_dict(), path)
+            state_dict = self.model._orig_mod.state_dict()
         else:
             # Regular model
-            torch.save(self.model.state_dict(), path)
+            state_dict = self.model.state_dict()
+        
+        # Move all tensors to CPU for cross-platform compatibility
+        cpu_state_dict = {k: v.cpu() if torch.is_tensor(v) else v 
+                         for k, v in state_dict.items()}
+        
+        # Save with additional metadata for better compatibility
+        checkpoint = {
+            'model_state_dict': cpu_state_dict,
+            'pytorch_version': torch.__version__,
+            'cuda_available': torch.cuda.is_available(),
+        }
+        torch.save(checkpoint, path)
     
     def load_model(self, path):
-        """Load model state dict from file."""
-        state_dict = torch.load(path, map_location=self.device)
+        """Load model state dict from file (handles cross-platform compatibility)."""
+        # Always use map_location to handle CPU/GPU differences
+        checkpoint = torch.load(path, map_location=self.device)
+        
+        # Handle both old and new save formats
+        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+            state_dict = checkpoint['model_state_dict']
+        else:
+            # Old format - just the state dict
+            state_dict = checkpoint
         
         # Check if we need to fix the state dict (compiled model issue)
         if any(k.startswith('_orig_mod.') for k in state_dict.keys()):
