@@ -5,7 +5,6 @@ import os
 import sys
 import torch
 import argparse
-import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 
@@ -41,184 +40,17 @@ def parse_args():
     return parser.parse_args()
 
 def plot_training_stats(stats, output_dir='plots'):
-    """Plot training statistics and save to files."""
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Make sure we have data to plot
-    if not stats['steps'] or len(stats['steps']) == 0:
-        print("No training stats to plot")
-        return
-    
-    # Set larger font sizes for publication-quality plots
-    plt.rcParams.update({
-        'font.size': 16,
-        'axes.titlesize': 20,
-        'axes.labelsize': 18,
-        'xtick.labelsize': 16,
-        'ytick.labelsize': 16,
-        'legend.fontsize': 16,
-        'figure.titlesize': 22,
-        'lines.linewidth': 3
-    })
-    
-    # Plot loss
-    plt.figure(figsize=(12, 8))
-    plt.plot(stats['steps'], stats['losses'], label='Total Loss')
-    plt.plot(stats['steps'], stats['nll_values'], label='NLL')
-    plt.plot(stats['steps'], stats['kl_values'], label='KL Divergence')
-    plt.xlabel('Training Step')
-    plt.ylabel('Loss Value')
-    plt.yscale('log')
-    plt.title('Training Loss Components')
-    plt.legend()
-    plt.grid(True)
-    loss_path = os.path.join(output_dir, 'training_loss.png')
-    plt.savefig(loss_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"Loss plot saved to {loss_path}")
-    
-    # Plot timing
-    plt.figure(figsize=(12, 8))
-    plt.plot(stats['steps'], [t*1000 for t in stats['times']])
-    plt.xlabel('Training Step')
-    plt.ylabel('Time (ms)')
-    plt.title('Training Time per Step')
-    plt.grid(True)
-    time_path = os.path.join(output_dir, 'training_time.png')
-    plt.savefig(time_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"Timing plot saved to {time_path}")
-    
-    # Determine the eval steps
-    if 'train_r2' in stats and len(stats['train_r2']) > 0:
-        if len(stats['train_r2']) < len(stats['steps']):
-            # Determine the eval interval from step intervals
-            step_size = max(1, len(stats['steps']) // len(stats['train_r2']))
-            eval_steps = []
-            
-            # Select the actual steps when evaluations happened
-            for i in range(len(stats['train_r2'])):
-                step_idx = min(i * step_size, len(stats['steps']) - 1)
-                eval_steps.append(stats['steps'][step_idx])
-        else:
-            # If we have the same number of eval points as steps, use all steps
-            eval_steps = stats['steps']
-            
-        # Combined plot for both R² and RMSE on a single plot with two y-axes
-        if 'train_rmse' in stats and len(stats['train_rmse']) > 0:
-            # Create a figure with a single plot and two y-axes
-            fig, ax1 = plt.subplots(figsize=(14, 10))
-            
-            # Plot R² on left y-axis (blue)
-            ax1.set_xlabel('Training Step', fontsize=20)
-            ax1.set_ylabel('R²', fontsize=20, color='blue')
-            ax1.tick_params(axis='y', labelcolor='blue')
-            ax1.grid(True, alpha=0.3)
-            ax1.set_ylim(0, 1.0)  # R² is usually between 0 and 1
-            
-            # Plot training R² (solid blue line)
-            line1 = ax1.plot(eval_steps, stats['train_r2'], 'b-', linewidth=3, label='Training R²')
-            
-            # Plot test R² if available (dashed blue line)
-            if 'test_r2' in stats and len(stats['test_r2']) > 0:
-                if len(stats['test_r2']) == len(stats['train_r2']):
-                    line2 = ax1.plot(eval_steps, stats['test_r2'], 'b--', linewidth=3, label='Test R²')
-                else:
-                    test_steps = stats['steps'][:len(stats['test_r2'])]
-                    line2 = ax1.plot(test_steps, stats['test_r2'], 'b--', linewidth=3, label='Test R²')
-            
-            # Create second y-axis (right) for RMSE (red)
-            ax2 = ax1.twinx()
-            ax2.set_ylabel('RMSE', fontsize=20, color='red')
-            ax2.tick_params(axis='y', labelcolor='red')
-            ax2.set_yscale('log')  # RMSE often looks better on log scale
-            
-            # Plot training RMSE (solid red line)
-            line3 = ax2.plot(eval_steps, stats['train_rmse'], 'r-', linewidth=3, label='Training RMSE')
-            
-            # Plot test RMSE if available (dashed red line)
-            if 'test_rmse' in stats and len(stats['test_rmse']) > 0:
-                if len(stats['test_rmse']) == len(stats['train_rmse']):
-                    line4 = ax2.plot(eval_steps, stats['test_rmse'], 'r--', linewidth=3, label='Test RMSE')
-                else:
-                    test_steps = stats['steps'][:len(stats['test_rmse'])]
-                    line4 = ax2.plot(test_steps, stats['test_rmse'], 'r--', linewidth=3, label='Test RMSE')
-            
-            # Add title
-            plt.title('Model Performance Metrics', fontsize=24)
-            
-            # Combine all lines for the legend
-            lines = line1
-            labels = ['Training R²']
-            
-            if 'test_r2' in stats and len(stats['test_r2']) > 0:
-                lines += line2
-                labels.append('Test R²')
-                
-            lines += line3
-            labels.append('Training RMSE')
-            
-            if 'test_rmse' in stats and len(stats['test_rmse']) > 0:
-                lines += line4
-                labels.append('Test RMSE')
-            
-            # Add legend with all lines
-            fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 0.97),
-                      ncol=4, fontsize=16, frameon=True, facecolor='white', edgecolor='black')
-            
-            # Adjust layout to make room for the legend
-            plt.subplots_adjust(top=0.85)
-            
-            # Save the combined plot
-            combined_path = os.path.join(output_dir, 'performance_metrics.png')
-            plt.savefig(combined_path, dpi=300, bbox_inches='tight')
-            plt.close()
-            print(f"Combined performance metrics plot saved to {combined_path}")
-            
-            # Also save individual plots for backward compatibility
-            
-            # R² plot
-            plt.figure(figsize=(12, 8))
-            plt.plot(eval_steps, stats['train_r2'], 'b-', linewidth=3, label='Training')
-            if 'test_r2' in stats and len(stats['test_r2']) > 0:
-                if len(stats['test_r2']) == len(stats['train_r2']):
-                    plt.plot(eval_steps, stats['test_r2'], 'r-', linewidth=3, label='Test')
-                else:
-                    test_steps = stats['steps'][:len(stats['test_r2'])]
-                    plt.plot(test_steps, stats['test_r2'], 'r-', linewidth=3, label='Test')
-            
-            plt.xlabel('Training Step')
-            plt.ylabel('R²')
-            plt.title('Model Performance (R²)')
-            plt.legend(loc='lower right')
-            plt.grid(True)
-            plt.ylim(0, 1.0)
-            r2_path = os.path.join(output_dir, 'r_squared.png')
-            plt.savefig(r2_path, dpi=300, bbox_inches='tight')
-            plt.close()
-            print(f"R² plot saved to {r2_path}")
-            
-            # RMSE plot
-            plt.figure(figsize=(12, 8))
-            plt.plot(eval_steps, stats['train_rmse'], 'b-', linewidth=3, label='Training')
-            if 'test_rmse' in stats and len(stats['test_rmse']) > 0:
-                if len(stats['test_rmse']) == len(stats['train_rmse']):
-                    plt.plot(eval_steps, stats['test_rmse'], 'r-', linewidth=3, label='Test')
-                else:
-                    test_steps = stats['steps'][:len(stats['test_rmse'])]
-                    plt.plot(test_steps, stats['test_rmse'], 'r-', linewidth=3, label='Test')
-            
-            plt.xlabel('Training Step')
-            plt.ylabel('RMSE')
-            plt.title('Model Performance (RMSE)')
-            plt.legend(loc='upper right')
-            plt.grid(True)
-            plt.yscale('log')
-            rmse_path = os.path.join(output_dir, 'rmse.png')
-            plt.savefig(rmse_path, dpi=300, bbox_inches='tight')
-            plt.close()
-            print(f"RMSE plot saved to {rmse_path}")
+    """Generate publication-quality plots for training statistics."""
+    # Import publication plotting functions
+    try:
+        from publication_plots import create_all_publication_plots
+        # Generate publication-quality plots
+        pub_dir = os.path.join(output_dir, 'publication')
+        create_all_publication_plots(stats, pub_dir)
+    except ImportError:
+        print("Warning: Could not import publication_plots module")
+    except Exception as e:
+        print(f"Error generating publication plots: {e}")
 
 def main():
     """Main training script."""

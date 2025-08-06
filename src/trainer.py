@@ -198,7 +198,20 @@ class Trainer:
                 'train_r2': [],
                 'test_r2': [],
                 'train_rmse': [],
-                'test_rmse': []
+                'test_rmse': [],
+                # Phase-specific metrics
+                'train_r2_gas': [],
+                'train_r2_oil': [],
+                'train_r2_water': [],
+                'test_r2_gas': [],
+                'test_r2_oil': [],
+                'test_r2_water': [],
+                'train_rmse_gas': [],
+                'train_rmse_oil': [],
+                'train_rmse_water': [],
+                'test_rmse_gas': [],
+                'test_rmse_oil': [],
+                'test_rmse_water': []
             }
             start_step = 1
         
@@ -228,8 +241,11 @@ class Trainer:
             stats['train_r2'].append(train_metrics['Overall_R2'])
             stats['train_rmse'].append(train_metrics['Overall_RMSE'])
             
-            # Track all phase-specific metrics in a compact format
+            # Track phase-specific training metrics
             for phase in ['Gas', 'Oil', 'Water']:
+                phase_lower = phase.lower()
+                stats[f'train_r2_{phase_lower}'].append(train_metrics[f'{phase}_R2_final'])
+                stats[f'train_rmse_{phase_lower}'].append(train_metrics[f'{phase}_RMSE_final'])
                 print(f"{phase}: R²={train_metrics[f'{phase}_R2_final']:.4f}, RMSE={train_metrics[f'{phase}_RMSE_final']:.4f}")
             
             # Evaluate and plot on test data if available
@@ -237,7 +253,10 @@ class Trainer:
                 # Generate plot path if needed
                 plot_path = None
                 if plots_dir:
-                    plot_path = os.path.join(plots_dir, f'eval_{prefix.lower()}.png')
+                    # Create eval_steps subfolder
+                    eval_dir = os.path.join(plots_dir, 'eval_steps')
+                    os.makedirs(eval_dir, exist_ok=True)
+                    plot_path = os.path.join(eval_dir, f'eval_{prefix.lower()}.png')
                 
                 # Evaluate and plot (save to file, don't display)
                 test_metrics, _ = plot_pred_vs_actual(
@@ -253,8 +272,11 @@ class Trainer:
                 stats['test_r2'].append(test_metrics['Overall_R2'])
                 stats['test_rmse'].append(test_metrics['Overall_RMSE'])
                 
-                # Track all phase-specific metrics in a compact format
+                # Track phase-specific test metrics
                 for phase in ['Gas', 'Oil', 'Water']:
+                    phase_lower = phase.lower()
+                    stats[f'test_r2_{phase_lower}'].append(test_metrics[f'{phase}_R2_final'])
+                    stats[f'test_rmse_{phase_lower}'].append(test_metrics[f'{phase}_RMSE_final'])
                     print(f"{phase}: R²={test_metrics[f'{phase}_R2_final']:.4f}, RMSE={test_metrics[f'{phase}_RMSE_final']:.4f}")
             
             # Save checkpoint
