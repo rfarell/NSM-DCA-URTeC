@@ -84,27 +84,51 @@ class ArpsHyperbolic(DCAModel):
         Fit Arps model to cumulative production data.
         Parameters: [q_i, Di, b]
         """
+        # Ensure we have enough data points
+        if len(t) < 3:
+            raise ValueError(f"Cannot fit Arps model with fewer than 3 data points. Got {len(t)} points.")
+        
+        # Data-driven initial guess
+        # Estimate initial rate from first interval
+        if len(t) > 1:
+            q_i_init = (Q[1] - Q[0]) / (t[1] - t[0]) if t[1] != t[0] else Q[1] / t[1]
+        else:
+            q_i_init = Q[0] / t[0] if t[0] != 0 else 100
+        
+        # Better initial Di estimate
+        if Q[-1] > 0:
+            Di_init = q_i_init / Q[-1] * 0.5  # Simple initial decline estimate
+        else:
+            Di_init = 0.1
+        
         if bounds is None:
+            # More flexible bounds based on data
             bounds = {
-                'q_i': (Q[-1] / t[-1] * 0.5, Q[-1] / t[-1] * 5),  # Initial rate estimate
-                'Di': (0.001, 2.0),  # Initial decline rate
-                'b': (0.01, 0.99)  # Hyperbolic exponent
+                'q_i': (q_i_init * 0.1, q_i_init * 10.0),
+                'Di': (1e-5, 5.0),  # Wider range for Di
+                'b': (0.01, 1.8)  # Allow b > 1 for more flexibility
             }
         
         def cumulative_arps(t, q_i, Di, b):
-            """Cumulative Arps hyperbolic equation."""
+            """Cumulative Arps hyperbolic equation - CORRECTED FORMULA."""
             # Avoid numerical issues
-            b = np.clip(b, 0.01, 0.99)
-            Di = np.clip(Di, 0.001, 10.0)
+            b = np.clip(b, 0.01, 2.0)
+            Di = np.clip(Di, 1e-6, 10.0)
             
-            # Calculate cumulative production
-            term = np.power(1 + b * Di * t, (1 - b) / b) - 1
-            Q = (q_i / (Di * (1 - b))) * term
+            # CORRECTED FORMULA: exponent should be (1 - 1/b)
+            # Q(t) = (q_i / (Di * (1-b))) * ((1 + b*Di*t)^(1-1/b) - 1)
+            # This is valid for b != 1
+            if np.abs(b - 1.0) < 1e-6:
+                # Special case: b = 1 (harmonic decline)
+                Q = (q_i / Di) * np.log(1 + Di * t)
+            else:
+                exponent = 1 - 1/b
+                term = np.power(1 + b * Di * t, exponent) - 1
+                Q = (q_i / (Di * (1 - b))) * term
             return Q
         
-        # Initial guess
-        q_i_init = Q[-1] / t[-1] * 1.5  # Rough initial rate
-        p0 = [q_i_init, 0.1, 0.5]
+        # Improved initial guess
+        p0 = [q_i_init, Di_init, 0.8]
         
         # Bounds for parameters
         lower_bounds = [bounds['q_i'][0], bounds['Di'][0], bounds['b'][0]]
@@ -135,13 +159,13 @@ class ArpsHyperbolic(DCAModel):
         return self
     
     def predict(self, t: np.ndarray) -> np.ndarray:
-        """Predict cumulative production."""
+        """Predict cumulative production using CORRECTED Arps formula."""
         if self.params is None:
             raise ValueError("Model must be fitted before prediction")
         
         q_i, Di, b = self.params
-        b = np.clip(b, 0.01, 0.99)
-        Di = np.clip(Di, 0.001, 10.0)
+        b = np.clip(b, 0.01, 2.0)
+        Di = np.clip(Di, 1e-6, 10.0)
         
         # Handle t=0 case
         Q = np.zeros_like(t)
@@ -149,16 +173,23 @@ class ArpsHyperbolic(DCAModel):
         
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
-            term = np.power(1 + b * Di * t_nz, (1 - b) / b) - 1
-            Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
+            
+            if np.abs(b - 1.0) < 1e-6:
+                # Special case: b = 1 (harmonic decline)
+                Q[non_zero_mask] = (q_i / Di) * np.log(1 + Di * t_nz)
+            else:
+                # CORRECTED FORMULA
+                exponent = 1 - 1/b
+                term = np.power(1 + b * Di * t_nz, exponent) - 1
+                Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
         
         return Q
     
     def _predict_with_params(self, t: np.ndarray, params: np.ndarray) -> np.ndarray:
-        """Predict with specific parameters."""
+        """Predict with specific parameters using CORRECTED formula."""
         q_i, Di, b = params
-        b = np.clip(b, 0.01, 0.99)
-        Di = np.clip(Di, 0.001, 10.0)
+        b = np.clip(b, 0.01, 2.0)
+        Di = np.clip(Di, 1e-6, 10.0)
         
         # Handle t=0 case
         Q = np.zeros_like(t)
@@ -166,8 +197,15 @@ class ArpsHyperbolic(DCAModel):
         
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
-            term = np.power(1 + b * Di * t_nz, (1 - b) / b) - 1
-            Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
+            
+            if np.abs(b - 1.0) < 1e-6:
+                # Special case: b = 1 (harmonic decline)
+                Q[non_zero_mask] = (q_i / Di) * np.log(1 + Di * t_nz)
+            else:
+                # CORRECTED FORMULA
+                exponent = 1 - 1/b
+                term = np.power(1 + b * Di * t_nz, exponent) - 1
+                Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
         
         return Q
 
@@ -187,30 +225,50 @@ class DuongModel(DCAModel):
         Fit Duong model to cumulative production data.
         Parameters: [q1, a, m]
         """
+        # Ensure we have enough data points
+        if len(t) < 3:
+            raise ValueError(f"Cannot fit Duong model with fewer than 3 data points. Got {len(t)} points.")
+        
+        # Data-driven initial guess
+        if len(t) > 1:
+            q1_init = (Q[1] - Q[0]) / (t[1] - t[0]) if t[1] != t[0] else Q[1] / t[1]
+        else:
+            q1_init = Q[0] / t[0] if t[0] != 0 else 100
+        
         if bounds is None:
+            # Flexible bounds based on data
             bounds = {
-                'q1': (Q[-1] / t[-1] * 0.1, Q[-1] / t[-1] * 10),
-                'a': (0.5, 5.0),
-                'm': (1.01, 1.5)  # m > 1 for Duong model
+                'q1': (q1_init * 0.01, q1_init * 100.0),
+                'a': (0.1, 10.0),
+                'm': (1.001, 2.0)  # m > 1 for Duong model
             }
         
         def cumulative_duong(t, q1, a, m):
-            """Cumulative Duong equation."""
+            """Cumulative Duong equation with improved stability."""
             # Ensure m > 1 for physical validity
-            m = np.clip(m, 1.01, 2.0)
+            m = np.clip(m, 1.001, 2.0)
             a = np.clip(a, 0.1, 10.0)
             
             # Handle t=0 case
             t_safe = np.maximum(t, 1e-10)
             
-            # Calculate cumulative production
-            exponent = (a / (1 - m)) * (np.power(t_safe, 1 - m) - 1)
+            # Calculate cumulative production with numerical stability
+            one_minus_m = 1 - m
+            
+            # Handle the case where m is very close to 1 to avoid division by zero
+            if np.abs(one_minus_m) < 1e-9:
+                # This is the exponential decline case (limit as m -> 1)
+                exponent = -a * np.log(t_safe)
+            else:
+                exponent = (a / one_minus_m) * (np.power(t_safe, one_minus_m) - 1)
+            
+            # Clip exponent to prevent overflow
+            exponent = np.clip(exponent, -50, 50)
             Q = (q1 / a) * np.exp(exponent)
             return Q
         
-        # Initial guess
-        q1_init = Q[-1] / t[-1] * 2
-        p0 = [q1_init, 1.0, 1.1]
+        # Improved initial guess
+        p0 = [q1_init, 1.5, 1.2]
         
         # Bounds for parameters
         lower_bounds = [bounds['q1'][0], bounds['a'][0], bounds['m'][0]]
@@ -244,12 +302,12 @@ class DuongModel(DCAModel):
         return self
     
     def predict(self, t: np.ndarray) -> np.ndarray:
-        """Predict cumulative production."""
+        """Predict cumulative production with improved stability."""
         if self.params is None:
             raise ValueError("Model must be fitted before prediction")
         
         q1, a, m = self.params
-        m = np.clip(m, 1.01, 2.0)
+        m = np.clip(m, 1.001, 2.0)
         a = np.clip(a, 0.1, 10.0)
         
         # Handle t=0 case - Duong model gives Q=0 at t=0
@@ -258,15 +316,24 @@ class DuongModel(DCAModel):
         
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
-            exponent = (a / (1 - m)) * (np.power(t_nz, 1 - m) - 1)
+            one_minus_m = 1 - m
+            
+            # Handle numerical stability
+            if np.abs(one_minus_m) < 1e-9:
+                exponent = -a * np.log(t_nz)
+            else:
+                exponent = (a / one_minus_m) * (np.power(t_nz, one_minus_m) - 1)
+            
+            # Clip to prevent overflow
+            exponent = np.clip(exponent, -50, 50)
             Q[non_zero_mask] = (q1 / a) * np.exp(exponent)
         
         return Q
     
     def _predict_with_params(self, t: np.ndarray, params: np.ndarray) -> np.ndarray:
-        """Predict with specific parameters."""
+        """Predict with specific parameters with improved stability."""
         q1, a, m = params
-        m = np.clip(m, 1.01, 2.0)
+        m = np.clip(m, 1.001, 2.0)
         a = np.clip(a, 0.1, 10.0)
         
         # Handle t=0 case
@@ -275,7 +342,16 @@ class DuongModel(DCAModel):
         
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
-            exponent = (a / (1 - m)) * (np.power(t_nz, 1 - m) - 1)
+            one_minus_m = 1 - m
+            
+            # Handle numerical stability
+            if np.abs(one_minus_m) < 1e-9:
+                exponent = -a * np.log(t_nz)
+            else:
+                exponent = (a / one_minus_m) * (np.power(t_nz, one_minus_m) - 1)
+            
+            # Clip to prevent overflow
+            exponent = np.clip(exponent, -50, 50)
             Q[non_zero_mask] = (q1 / a) * np.exp(exponent)
         
         return Q
