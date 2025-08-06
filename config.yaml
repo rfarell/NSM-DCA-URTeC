@@ -18,7 +18,7 @@ training:
   random_seed: 42
   eval_interval: 10  # How often to evaluate and plot during training
   kl_anneal_steps: 1000  # Steps over which KL weight ramps 0→1
-  compile_model: true  # Whether to use torch.compile (set to false if having issues)
+  compile_model: false  # Whether to use torch.compile (set to false if having issues)
   kl_weights:  # Weights for different KL terms
     rff: 1.0         # Existing RFF weights KL
     taper: 0.1       # Taper parameters (start small)

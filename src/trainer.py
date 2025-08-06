@@ -36,21 +36,36 @@ class Trainer:
     
         # Enable torch.compile for CUDA devices with safe fallback
         compile_model = config.get("training", {}).get("compile_model", True)
-        if compile_model and hasattr(torch, 'compile') and self.device.type == 'cuda':
+        
+        # Check if user explicitly disabled compilation
+        import os
+        compile_disabled = os.environ.get('TORCH_COMPILE_DISABLE', '0') == '1'
+        
+        if compile_model and hasattr(torch, 'compile') and self.device.type == 'cuda' and not compile_disabled:
             print("Attempting to compile the model with torch.compile...")
             try:
                 # Check GPU memory to decide compilation mode
                 props = torch.cuda.get_device_properties(self.device)
-                if props.total_memory > 8 * 1024**3:  # More than 8GB
-                    # Use max-autotune for better performance on powerful GPUs
+                print(f"GPU Memory: {props.total_memory / 1e9:.1f} GB")
+                
+                # Be more conservative with compilation to avoid slowdowns
+                if props.total_memory > 24 * 1024**3:  # More than 24GB (e.g., RTX 3090, A100)
+                    # Only use max-autotune for very powerful GPUs
                     self.model = torch.compile(self.model, mode="max-autotune")
                     print("Model compiled with max-autotune mode!")
+                elif props.total_memory > 12 * 1024**3:  # 12-24GB
+                    # Use reduce-overhead for medium GPUs
+                    self.model = torch.compile(self.model, mode="reduce-overhead")
+                    print("Model compiled with reduce-overhead mode!")
                 else:
-                    # Use default mode for GPUs with less memory
-                    self.model = torch.compile(self.model, mode="default")
-                    print("Model compiled with default mode!")
+                    # Skip compilation for smaller GPUs as it often slows things down
+                    print(f"Skipping torch.compile for GPU with {props.total_memory / 1e9:.1f}GB memory (often slower)")
             except Exception as e:
                 print(f"Could not compile model: {e}. Running un-compiled.")
+        elif compile_disabled:
+            print("Torch compilation disabled via TORCH_COMPILE_DISABLE=1")
+        elif self.device.type == 'cpu':
+            print("Running on CPU - torch.compile not used")
                 
         # Training hyperparameters
         self.learning_rate = config["training"]["learning_rate"]

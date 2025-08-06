@@ -37,6 +37,8 @@ def parse_args():
                         help='Experiment ID/path to save and organize results. If it exists, training will resume.')
     parser.add_argument('--no-resume', action='store_true',
                         help='Start a new training run even if experiment exists')
+    parser.add_argument('--no-compile', action='store_true',
+                        help='Disable torch.compile for faster startup (recommended for GPU issues)')
     return parser.parse_args()
 
 def plot_training_stats(stats, output_dir='plots'):
@@ -55,6 +57,12 @@ def plot_training_stats(stats, output_dir='plots'):
 def main():
     """Main training script."""
     args = parse_args()
+    
+    # Handle --no-compile flag
+    if args.no_compile:
+        import os
+        os.environ['TORCH_COMPILE_DISABLE'] = '1'
+        print("Torch compilation disabled via --no-compile flag")
     
     # Initialize training variables
     experiment_path = None
