@@ -1,16 +1,16 @@
 === Overall Metrics for Experiment: exp9 ===
 
 Training Set Metrics:
-Overall R²: 0.7320
-Overall RMSE: 44855.7812
+Overall R²: 0.8222
+Overall RMSE: 36533.7070
 
 Test Set Metrics:
-Overall R²: 0.7079
-Overall RMSE: 48745.6133
+Overall R²: 0.7906
+Overall RMSE: 41275.6250
 
-Gas Test R² (final): 0.5354
-Gas Test RMSE (final): 127300.7188
-Oil Test R² (final): 0.3533
-Oil Test RMSE (final): 68355.9297
-Water Test R² (final): 0.4753
-Water Test RMSE (final): 62290.3672
+Gas Test R² (final): 0.6353
+Gas Test RMSE (final): 112794.6172
+Oil Test R² (final): 0.4613
+Oil Test RMSE (final): 62391.2695
+Water Test R² (final): 0.6079
+Water Test RMSE (final): 53846.1680

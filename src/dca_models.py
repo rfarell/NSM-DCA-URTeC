@@ -115,16 +115,27 @@ class ArpsHyperbolic(DCAModel):
             b = np.clip(b, 0.01, 2.0)
             Di = np.clip(Di, 1e-6, 10.0)
             
-            # CORRECTED FORMULA: exponent should be (1 - 1/b)
-            # Q(t) = (q_i / (Di * (1-b))) * ((1 + b*Di*t)^(1-1/b) - 1)
-            # This is valid for b != 1
-            if np.abs(b - 1.0) < 1e-6:
-                # Special case: b = 1 (harmonic decline)
+            # CORRECTED FORMULA with proper limiting cases
+            # When b → 0: exponential decline Q = (q_i/Di) * (1 - exp(-Di*t))
+            # When b = 1: harmonic decline Q = (q_i/Di) * ln(1 + Di*t)
+            # Otherwise: hyperbolic Q = (q_i / (Di * (1-b))) * ((1 + b*Di*t)^(1-1/b) - 1)
+            
+            if np.abs(b) < 0.05:
+                # Exponential decline for b ≈ 0
+                Q = (q_i / Di) * (1 - np.exp(-Di * t))
+            elif np.abs(b - 1.0) < 1e-6:
+                # Harmonic decline for b = 1
                 Q = (q_i / Di) * np.log(1 + Di * t)
             else:
+                # Hyperbolic decline
                 exponent = 1 - 1/b
-                term = np.power(1 + b * Di * t, exponent) - 1
-                Q = (q_i / (Di * (1 - b))) * term
+                # Avoid numerical issues with extreme exponents
+                if exponent < -50:
+                    # When exponent is very negative, use exponential approximation
+                    Q = (q_i / Di) * (1 - np.exp(-Di * t))
+                else:
+                    term = np.power(1 + b * Di * t, exponent) - 1
+                    Q = (q_i / (Di * (1 - b))) * term
             return Q
         
         # Improved initial guess
@@ -174,14 +185,22 @@ class ArpsHyperbolic(DCAModel):
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
             
-            if np.abs(b - 1.0) < 1e-6:
-                # Special case: b = 1 (harmonic decline)
+            if np.abs(b) < 0.05:
+                # Exponential decline for b ≈ 0
+                Q[non_zero_mask] = (q_i / Di) * (1 - np.exp(-Di * t_nz))
+            elif np.abs(b - 1.0) < 1e-6:
+                # Harmonic decline for b = 1
                 Q[non_zero_mask] = (q_i / Di) * np.log(1 + Di * t_nz)
             else:
-                # CORRECTED FORMULA
+                # Hyperbolic decline
                 exponent = 1 - 1/b
-                term = np.power(1 + b * Di * t_nz, exponent) - 1
-                Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
+                # Avoid numerical issues with extreme exponents
+                if exponent < -50:
+                    # When exponent is very negative, use exponential approximation
+                    Q[non_zero_mask] = (q_i / Di) * (1 - np.exp(-Di * t_nz))
+                else:
+                    term = np.power(1 + b * Di * t_nz, exponent) - 1
+                    Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
         
         return Q
     
@@ -198,14 +217,22 @@ class ArpsHyperbolic(DCAModel):
         if np.any(non_zero_mask):
             t_nz = t[non_zero_mask]
             
-            if np.abs(b - 1.0) < 1e-6:
-                # Special case: b = 1 (harmonic decline)
+            if np.abs(b) < 0.05:
+                # Exponential decline for b ≈ 0
+                Q[non_zero_mask] = (q_i / Di) * (1 - np.exp(-Di * t_nz))
+            elif np.abs(b - 1.0) < 1e-6:
+                # Harmonic decline for b = 1
                 Q[non_zero_mask] = (q_i / Di) * np.log(1 + Di * t_nz)
             else:
-                # CORRECTED FORMULA
+                # Hyperbolic decline
                 exponent = 1 - 1/b
-                term = np.power(1 + b * Di * t_nz, exponent) - 1
-                Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
+                # Avoid numerical issues with extreme exponents
+                if exponent < -50:
+                    # When exponent is very negative, use exponential approximation
+                    Q[non_zero_mask] = (q_i / Di) * (1 - np.exp(-Di * t_nz))
+                else:
+                    term = np.power(1 + b * Di * t_nz, exponent) - 1
+                    Q[non_zero_mask] = (q_i / (Di * (1 - b))) * term
         
         return Q
 
