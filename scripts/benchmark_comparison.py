@@ -108,6 +108,15 @@ def evaluate_nsm_model(model, x_test, z_test, t_vals, scale_test, device, n_mc=1
     """Evaluate NSM-DCA model and generate probabilistic predictions."""
     from torchdiffeq import odeint
     
+    # Ensure model is on the correct device
+    model = model.to(device)
+    
+    # Move data to the same device as model
+    x_test = x_test.to(device)
+    z_test = z_test.to(device)
+    t_vals = t_vals.to(device)
+    scale_test = scale_test.to(device)
+    
     n_wells, n_time, n_phases = x_test.shape
     
     # Generate MC samples
