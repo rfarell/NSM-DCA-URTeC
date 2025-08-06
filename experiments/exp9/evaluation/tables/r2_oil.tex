@@ -1,0 +1,22 @@
+\begin{table}
+    \centering
+    \caption{R$^2$ of Predicted vs Actual Oil Production at Different Time Periods}
+    \label{tab:r2_oil}
+    \begin{tabular}{c|ccccccc}
+        \toprule
+        \multirow{2}{*}{Initial Condition (Days)} & \multicolumn{7}{c}{Prediction Time (Days)} \\
+        \cmidrule{2-8}
+        & 30 & 60 & 90 & 180 & 360 & 720 & 1080 \\
+        \midrule
+        0   & -0.085 & -0.032 & 0.037 & 0.205 & 0.335 & 0.383 & 0.365 \\
+        30   &  & 0.795 & 0.660 & 0.543 & 0.517 & 0.486 & 0.438 \\
+        60   &  &  & 0.932 & 0.755 & 0.657 & 0.572 & 0.507 \\
+        90   &  &  &  & 0.873 & 0.739 & 0.622 & 0.543 \\
+        180   &  &  &  &  & 0.901 & 0.746 & 0.643 \\
+        360   &  &  &  &  &  & 0.912 & 0.818 \\
+        720   &  &  &  &  &  &  & 0.960 \\
+        \bottomrule
+    \end{tabular}
+    \vspace{0.2cm}
+    \caption*{The table presents R$^2$ values for predicted versus actual oil production across varying time periods. Higher values (closer to 1.0) indicate better predictive accuracy.}
+\end{table}

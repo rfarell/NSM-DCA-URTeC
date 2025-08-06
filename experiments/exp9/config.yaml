@@ -1,0 +1,42 @@
+model:
+  K: 1
+  input_dim: 3
+  num_basis: 8
+  num_experts: 16
+  num_mc: 4
+  z_dim: 19
+ode:
+  atol: 0.01
+  method: midpoint
+  rtol: 0.01
+paths:
+  csv_file: data/bakken.csv
+  model_checkpoint: experiments/exp9/model.pth
+  plots_dir: experiments/exp9/plots
+  scaler: experiments/exp9/scaler.pkl
+prediction:
+  days:
+  - 0
+  - 30
+  - 60
+  - 90
+  - 180
+  - 360
+  - 720
+  - 1080
+  num_mc: 10
+training:
+  batch_size: 8192
+  compile_model: false
+  eval_interval: 100
+  kl_anneal_steps: 1000
+  kl_weights:
+    gating: 0.01
+    noise: 0.1
+    rff: 1.0
+    spectral: 0.1
+    taper: 0.1
+  learning_rate: 0.001
+  random_seed: 42
+  total_steps: 5000
+  validation_split: 0.2

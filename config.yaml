@@ -13,10 +13,10 @@ model:
 training:
   learning_rate: 0.001
   batch_size: 8192
-  total_steps: 30
+  total_steps: 1000
   validation_split: 0.2
   random_seed: 42
-  eval_interval: 10  # How often to evaluate and plot during training
+  eval_interval: 100  # How often to evaluate and plot during training
   kl_anneal_steps: 1000  # Steps over which KL weight ramps 0→1
   compile_model: false  # Whether to use torch.compile (set to false if having issues)
   kl_weights:  # Weights for different KL terms

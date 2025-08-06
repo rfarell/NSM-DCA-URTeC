@@ -1,0 +1,22 @@
+\begin{table}
+    \centering
+    \caption{RMSE of Predicted vs Actual Gas Production at Different Time Periods}
+    \label{tab:rmse_gas}
+    \begin{tabular}{c|ccccccc}
+        \toprule
+        \multirow{2}{*}{Initial Condition (Days)} & \multicolumn{7}{c}{Prediction Time (Days)} \\
+        \cmidrule{2-8}
+        & 30 & 60 & 90 & 180 & 360 & 720 & 1080 \\
+        \midrule
+        0   & 0.1390 & 0.2278 & 0.2965 & 0.4470 & 0.6422 & 0.9306 & 1.1584 \\
+        30   &  & 0.1010 & 0.1748 & 0.3424 & 0.5529 & 0.8373 & 1.0724 \\
+        60   &  &  & 0.0786 & 0.2534 & 0.4713 & 0.7790 & 1.0157 \\
+        90   &  &  &  & 0.1825 & 0.4065 & 0.7138 & 0.9524 \\
+        180   &  &  &  &  & 0.2504 & 0.5768 & 0.8263 \\
+        360   &  &  &  &  &  & 0.3509 & 0.5982 \\
+        720   &  &  &  &  &  &  & 0.2982 \\
+        \bottomrule
+    \end{tabular}
+    \vspace{0.2cm}
+    \caption*{The table presents RMSE values for predicted versus actual gas production across varying time periods. Lower RMSE values indicate better predictive accuracy.}
+\end{table}

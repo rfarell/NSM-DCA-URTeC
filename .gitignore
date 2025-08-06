@@ -6,7 +6,6 @@ __pycache__/
 
 # Data
 /data/bakken.csv
-experiments/
 
 # Distribution / packaging
 dist/

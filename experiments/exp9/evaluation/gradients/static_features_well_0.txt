@@ -1,0 +1,14 @@
+Static Features for Well 0
+==========================
+
+Completion Parameters:
+LateralLength FT: 0.18, FracStages: 0.63, AverageStageSpacing FT: -0.21, ProppantIntensity LBSPerFT: 0.12, FluidIntensity BBLPerFT: 3.32
+
+Geological Properties:
+Isopach FT: -0.92, EffectivePorosity PCT: 0.49, TopOfZone FT: 0.46, GammaRay API: 0.60, Resistivity OHMSM: 0.21, ClayVolume PCT: 0.93
+
+Reservoir Characteristics:
+WaterSaturation PCT: -0.65, PhiH FT: -0.87, HCPV PCT: 0.80, TotalOrganicCarbon WTPCT: 1.13, BottomOfZone FT: 0.35, TrueVerticalDepth FT: 0.40
+
+Location:
+Latitude: -0.23, Longitude: -1.84
