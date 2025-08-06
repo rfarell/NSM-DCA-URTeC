@@ -64,5 +64,5 @@ aggregate.py
 aggregate.txt
 
 # Benchmark cache files
-benchmarks*/
-*_cache_*.pkl
+# benchmarks*/
+# *_cache_*.pkl
