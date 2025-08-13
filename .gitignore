@@ -1,0 +1,61 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Data
+/data/bakken.csv
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+.coverage
+htmlcov/
+.pytest_cache/
+.coverage.*
+.tox/
+.nox/
+*.bak
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Aggregated files
+aggregate.txt
+aggregate_repo.txt
+llm/
+.claude/
+aggregate.py
+aggregate.txt
+
+# Benchmark cache files and results
+benchmarks/
+
+# Experiments folder (contains model weights and evaluation outputs)
+experiments/

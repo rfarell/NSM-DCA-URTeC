@@ -1,0 +1,45 @@
+# config.yaml
+
+# Model Hyperparameters
+model:
+  input_dim: 3    # Dim of the state vector (production rates or volumes)
+  z_dim: 19       # Dimension of static features
+  num_basis: 8    # R in the paper - Number of random Fourier features
+  num_mc: 4        # N in the paper - Number of Monte Carlo samples for integration
+  num_experts: 16  # M in the paper - Number of experts in the mixture
+  K: 1            # Number of posterior samples for each expert
+
+# Training Hyperparameters
+training:
+  learning_rate: 0.001
+  batch_size: 8192
+  total_steps: 1000
+  validation_split: 0.2
+  random_seed: 42
+  eval_interval: 100  # How often to evaluate and plot during training
+  kl_anneal_steps: 1000  # Steps over which KL weight ramps 0→1
+  compile_model: false  # Whether to use torch.compile (set to false if having issues)
+  kl_weights:  # Weights for different KL terms
+    rff: 1.0         # Existing RFF weights KL
+    taper: 0.1       # Taper parameters (start small)
+    noise: 0.1       # Noise covariance (start small)
+    spectral: 0.1    # Spectral mixture params (start small)
+    gating: 0.01     # Gating network (very small)
+
+# ODE Solver Configuration
+ode:
+  method: "midpoint"      # Adaptive Runge-Kutta solver (faster for smooth dynamics)
+  atol: 1.0e-2       # Absolute tolerance
+  rtol: 1.0e-2       # Relative tolerance
+
+# Paths
+paths:
+  csv_file: data/bakken.csv
+  model_checkpoint: models/model.pth
+  scaler: models/scaler_z.pkl
+  plots_dir: plots
+
+# Prediction settings
+prediction:
+  num_mc: 10           # Number of Monte Carlo samples for prediction
+  days: [0, 30, 60, 90, 180, 360, 720, 1080]  # Time points in days
